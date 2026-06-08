@@ -1,5 +1,6 @@
 // SSH connection helpers — build and manage ssh2::Session
 
+use std::io::Write;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
@@ -36,14 +37,24 @@ pub fn connect(
         .handshake()
         .map_err(|e| AppError::SshConnection(format!("SSH handshake failed: {}", e)))?;
 
+    // Authenticate. For private keys: write to a temp file first —
+    // `userauth_pubkey_memory` is not available on Windows libssh2 builds.
     if let Some(pw) = password {
         session
             .userauth_password(username, pw)
             .map_err(|e| AppError::SshConnection(format!("Password auth failed: {}", e)))?;
     } else if let Some(key_data) = private_key {
-        session
-            .userauth_pubkey_memory(username, None, key_data, None)
-            .map_err(|e| AppError::SshConnection(format!("Public key auth failed: {}", e)))?;
+        let key_path = std::env::temp_dir()
+            .join(format!("weboneterm_key_{}", std::process::id()));
+        std::fs::write(&key_path, key_data)
+            .map_err(|e| AppError::SshConnection(format!("Cannot write temp key: {}", e)))?;
+
+        let result = session
+            .userauth_pubkey_file(username, None, &key_path, None)
+            .map_err(|e| AppError::SshConnection(format!("Public key auth failed: {}", e)));
+
+        std::fs::remove_file(&key_path).ok();
+        result?;
     } else {
         return Err(AppError::SshConnection("No credentials provided".into()));
     }
