@@ -29,9 +29,9 @@ export function FileManager({ server }: FileManagerProps) {
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = useCallback(
-    async (files: FileList) => {
+    async (filePaths: string[]) => {
       setUploading(true);
-      await uploadFiles(files);
+      await uploadFiles(filePaths);
       setUploading(false);
     },
     [uploadFiles]

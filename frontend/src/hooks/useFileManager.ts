@@ -28,7 +28,6 @@ export function useFileManager(serverId: number) {
     [serverId, currentPath]
   );
 
-  // Auto-load on mount and when serverId changes
   useEffect(() => {
     loadFiles('/');
   }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -47,13 +46,14 @@ export function useFileManager(serverId: number) {
   }, [currentPath, loadFiles]);
 
   const uploadFiles = useCallback(
-    async (files: FileList | File[]) => {
+    async (filePaths: string[]) => {
       setError(null);
-      for (const file of Array.from(files)) {
+      for (const filePath of filePaths) {
         try {
-          await api.uploadFile(serverId, file, currentPath);
+          await api.uploadFile(serverId, filePath, currentPath);
         } catch (err) {
-          setError(`Upload failed for ${file.name}: ${err}`);
+          const name = filePath.split('/').pop() || filePath;
+          setError(`Upload failed for ${name}: ${err}`);
         }
       }
       await loadFiles();

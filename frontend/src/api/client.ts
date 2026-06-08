@@ -1,8 +1,24 @@
-// Fetch wrapper with base URL and error handling
+// Tauri IPC wrapper — uses window.__TAURI__ global (withGlobalTauri: true)
 
-const BASE_URL = '/api';
+function getInvoke() {
+  const tauri = (window as unknown as Record<string, unknown>).__TAURI__ as
+    | { core?: { invoke?: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T> } }
+    | undefined;
+  if (!tauri?.core?.invoke) {
+    throw new Error('Tauri runtime not available. Run this app via `cargo tauri dev` or the built bundle.');
+  }
+  return tauri.core.invoke;
+}
 
-class ApiError extends Error {
+export async function request<T>(
+  cmd: string,
+  args?: Record<string, unknown>
+): Promise<T> {
+  const invoke = getInvoke();
+  return invoke<T>(cmd, args);
+}
+
+export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
     super(message);
@@ -11,36 +27,4 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
-  const url = `${BASE_URL}${path}`;
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    let detail = body;
-    try {
-      const json = JSON.parse(body);
-      detail = json.detail || body;
-    } catch {
-      // not JSON, use raw text
-    }
-    throw new ApiError(detail, response.status);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
-
-export { request, ApiError, BASE_URL };
+export const BASE_URL = '/api';

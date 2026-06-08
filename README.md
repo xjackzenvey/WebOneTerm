@@ -1,61 +1,71 @@
 # WebOneTerm
 
-Web-based SSH terminal and file manager built with FastAPI + React.
+Native desktop SSH terminal and file manager built with Tauri + React.
 
 ## Features
 
-- **SSH Terminal** — xterm.js-based terminal with full color support, connects directly to your servers
+- **SSH Terminal** — xterm.js-based terminal with full 256-color support, PTY resize, multi-tab sessions
 - **Server Manager** — add, edit, and delete SSH server configurations (password or private key auth)
-- **File Manager** — SFTP-based file browser with upload, download, delete, and directory creation
+- **File Manager** — SFTP-based file browser with native file dialogs for upload/download, delete, and directory creation
+- **Tab System** — multiple terminals per server, file manager in separate tabs, drag-free tab switching
+- **System Tray** — minimize to tray, sessions stay alive; click tray icon to restore
+- **State Persistence** — tabs survive app restart (localStorage)
 - **Local-first** — data stored in `~/.weboneterm/` with Fernet encryption for credentials
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.13+
+- Rust 1.77+ (with `cargo`)
 - Node.js 18+
-- uv (recommended) or pip
 
-### Install & Run
+### Development
 
 ```bash
-# Backend
-uv sync
-uv run python main.py
+# Install frontend dependencies
+cd frontend && npm install
 
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
+# Run in development mode (hot reload)
+cargo tauri dev
 ```
-
-Open http://localhost:5173 in your browser.
 
 ### Production Build
 
 ```bash
-cd frontend && npm run build
-# Then run the backend — it auto-serves the built frontend at /
-uv run python main.py
-# Open http://localhost:8000
+# Creates a native .app bundle on macOS (.dmg with `cargo tauri build --bundles dmg`)
+cargo tauri build
 ```
+
+The built app will be in `src-tauri/target/release/bundle/`.
 
 ## Architecture
 
 ```
-Browser (xterm.js + React)  ←→  FastAPI (WebSocket + REST)  ←→  Remote SSH Server
+┌── React (WebView) ────────────────────────┐
+│  xterm.js  │  File Manager  │  Sidebar    │
+│       │           │              │        │
+│  Tauri Events  invoke()     invoke()      │
+└───────┼───────────┼──────────────┼────────┘
+        │           │              │
+┌───────┼───────────┼──────────────┼────────┐
+│  Rust (Tauri) ────────────────────────────│
+│       ▼           ▼              ▼        │
+│  ssh2::Channel  ssh2::Sftp   rusqlite     │
+│       │           │              │        │
+└───────┼───────────┼──────────────┼────────┘
+        ▼           ▼              ▼
+  Remote SSH    Remote SFTP    ~/.weboneterm/
+   Server        Server        (SQLite + Fernet)
 ```
-
-SSH connections go directly from the Python backend to your remote servers — no relays or cloud hops.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | FastAPI, asyncssh, SQLAlchemy (SQLite + aiosqlite), cryptography (Fernet) |
+| Backend | Rust, Tauri v2, ssh2 (libssh2), rusqlite, AES-CBC + HMAC-SHA256 (Fernet) |
 | Frontend | React 19, TypeScript, xterm.js, zustand, Vite |
 
 ## Data Storage
 
 - Server configs & encrypted credentials: `~/.weboneterm/weboneterm.db` (SQLite)
 - Encryption key: `~/.weboneterm/fernet.key` (0600 permissions)
+- Tab state: browser localStorage (`weboneterm-tabs`)

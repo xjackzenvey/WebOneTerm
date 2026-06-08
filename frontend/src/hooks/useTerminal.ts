@@ -1,21 +1,37 @@
-// xterm.js terminal lifecycle + WebSocket management
+// xterm.js terminal lifecycle + Tauri event streaming
 
 import { useEffect, useRef, type RefObject } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
+// Use global Tauri APIs (withGlobalTauri: true)
+function getTauri() {
+  return (window as unknown as Record<string, unknown>).__TAURI__ as {
+    core?: { invoke?: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T> };
+    event?: { listen?: <T>(event: string, handler: (e: { payload: T }) => void) => Promise<() => void> };
+  } | undefined;
+}
+
 export function useTerminal(
   serverId: number,
   containerRef: RefObject<HTMLDivElement | null>
 ) {
   const termRef = useRef<Terminal | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
+  const sessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    const tauri = getTauri();
+    if (!tauri?.core?.invoke || !tauri?.event?.listen) return;
+
+    const invoke = tauri.core.invoke;
+    const listen = tauri.event.listen;
+
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
 
     // 1. Create terminal
     const term = new Terminal({
@@ -54,98 +70,93 @@ export function useTerminal(
 
     // 2. Fit addon
     const fitAddon = new FitAddon();
-    fitAddonRef.current = fitAddon;
     term.loadAddon(fitAddon);
 
     // 3. Mount terminal
     term.open(container);
     fitAddon.fit();
 
-    // 4. Connect WebSocket
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/terminal/${serverId}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      // Send initial terminal size
-      const dims = fitAddon.proposeDimensions();
-      if (dims) {
-        ws.send(
-          JSON.stringify({
-            type: 'resize',
-            cols: dims.cols,
-            rows: dims.rows,
-          })
-        );
-      }
-    };
-
-    ws.onmessage = (event) => {
+    // 4. Start terminal session
+    async function startSession() {
       try {
-        const msg = JSON.parse(event.data);
-        switch (msg.type) {
-          case 'stdout':
-            term.write(msg.data);
-            break;
-          case 'disconnected':
-            term.write(
-              `\r\n\x1b[33m--- ${msg.reason} ---\x1b[0m\r\n`
-            );
-            break;
-          case 'error':
-            term.write(
-              `\r\n\x1b[31mConnection error: ${msg.message}\x1b[0m\r\n`
-            );
-            break;
-          case 'pong':
-            break;
+        const key: string = await invoke('start_terminal', { serverId });
+        if (cancelled) return;
+        sessionKeyRef.current = key;
+
+        const eventName = `terminal-event-${key}`;
+
+        unlisten = await listen<{ type: string; data?: string; reason?: string; message?: string }>(
+          eventName,
+          (event) => {
+            const msg = event.payload;
+            switch (msg.type) {
+              case 'stdout':
+                term.write(msg.data ?? '');
+                break;
+              case 'disconnected':
+                term.write(`\r\n\x1b[33m--- ${msg.reason ?? 'Disconnected'} ---\x1b[0m\r\n`);
+                break;
+              case 'error':
+                term.write(`\r\n\x1b[31mConnection error: ${msg.message}\x1b[0m\r\n`);
+                break;
+              case 'pong':
+                break;
+            }
+          }
+        );
+
+        // Now that we're listening, tell backend to start reading
+        await invoke('start_reading', { sessionKey: key });
+
+        // Send initial resize
+        const dims = fitAddon.proposeDimensions();
+        if (dims?.cols != null && dims?.rows != null) {
+          invoke('resize_terminal', { sessionKey: key, cols: dims.cols, rows: dims.rows }).catch(() => {});
         }
-      } catch {
-        // ignore parse errors
+      } catch (err) {
+        term.write(`\r\n\x1b[31mFailed to connect: ${err}\x1b[0m\r\n`);
       }
-    };
+    }
 
-    ws.onclose = () => {
-      term.write('\r\n\x1b[33m--- Connection closed ---\x1b[0m\r\n');
-    };
+    startSession();
 
-    ws.onerror = () => {
-      term.write(
-        '\r\n\x1b[31m--- WebSocket error ---\x1b[0m\r\n'
-      );
-    };
+    // 5. User input — focus terminal on click
+    const clickHandler = () => term.focus();
+    term.element?.addEventListener('click', clickHandler, true);
 
-    // 5. User input → WebSocket
     term.onData((data) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'stdin', data }));
+      const key = sessionKeyRef.current;
+      if (key) {
+        invoke('write_terminal', { sessionKey: key, data }).catch((err) => {
+          term.write(`\r\n\x1b[31mWrite error: ${err}\x1b[0m\r\n`);
+        });
       }
     });
 
-    // 6. Resize handling
+    // 6. Resize
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
+      const key = sessionKeyRef.current;
+      if (!key) return;
       const dims = fitAddon.proposeDimensions();
-      if (dims && ws.readyState === WebSocket.OPEN) {
-        ws.send(
-          JSON.stringify({
-            type: 'resize',
-            cols: dims.cols,
-            rows: dims.rows,
-          })
-        );
+      if (dims?.cols != null && dims?.rows != null) {
+        invoke('resize_terminal', { sessionKey: key, cols: dims.cols, rows: dims.rows }).catch(() => {});
       }
     });
     resizeObserver.observe(container);
 
     // 7. Cleanup
     return () => {
+      cancelled = true;
       resizeObserver.disconnect();
-      ws.close();
+      if (unlisten) unlisten();
+      const key = sessionKeyRef.current;
+      if (key) {
+        invoke('close_terminal', { sessionKey: key }).catch(() => {});
+      }
       term.dispose();
     };
-  }, [serverId]); // re-create if serverId changes
+  }, [serverId]);
 
   return { terminal: termRef.current };
 }

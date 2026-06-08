@@ -1,6 +1,7 @@
-// File manager toolbar: breadcrumb nav, upload, mkdir
+// File manager toolbar: breadcrumb nav, upload (native dialog), mkdir
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { openFilesDialog } from '../../api/endpoints';
 import { Spinner } from '../common/Spinner';
 import './FileToolbar.css';
 
@@ -8,7 +9,7 @@ interface FileToolbarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   onGoUp: () => void;
-  onUpload: (files: FileList) => void;
+  onUpload: (filePaths: string[]) => void;
   onCreateDir: (name: string) => void;
   onRefresh: () => void;
   uploading?: boolean;
@@ -23,7 +24,6 @@ export function FileToolbar({
   onRefresh,
   uploading = false,
 }: FileToolbarProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [mkdirOpen, setMkdirOpen] = useState(false);
   const [dirName, setDirName] = useState('');
 
@@ -44,6 +44,13 @@ export function FileToolbar({
     setMkdirOpen(false);
   }
 
+  async function handleUploadClick() {
+    const paths = await openFilesDialog();
+    if (paths.length > 0) {
+      onUpload(paths);
+    }
+  }
+
   return (
     <div className="file-toolbar">
       <div className="toolbar-left">
@@ -59,8 +66,8 @@ export function FileToolbar({
           ) : (
             <>
               <span className="breadcrumb-item" onClick={() => onNavigate('/')}>/</span>
-              {segments.map((seg, idx) => (
-                <span key={idx} className="breadcrumb-sep">/</span>
+              {segments.map((_s, idx) => (
+                <span key={`sep-${idx}`} className="breadcrumb-sep">/</span>
               ))}
               {segments.map((seg, idx) => (
                 <span
@@ -89,24 +96,11 @@ export function FileToolbar({
 
         <button
           className="btn btn-sm btn-primary"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleUploadClick}
           disabled={uploading}
         >
           ↑ Upload
         </button>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) {
-              onUpload(e.target.files);
-              e.target.value = '';
-            }
-          }}
-        />
       </div>
 
       {mkdirOpen && (

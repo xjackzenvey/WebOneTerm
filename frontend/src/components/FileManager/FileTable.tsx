@@ -1,7 +1,7 @@
-// File list table with actions
+// File list table with actions (Tauri-native download via save dialog)
 
 import { useState } from 'react';
-import { BASE_URL } from '../../api/client';
+import { downloadFile } from '../../api/endpoints';
 import { Spinner } from '../common/Spinner';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import type { FileEntry } from '../../types';
@@ -32,10 +32,6 @@ function formatDate(ts: number | null): string {
   return d.toLocaleString();
 }
 
-function buildDownloadUrl(serverId: number, filePath: string): string {
-  return `${BASE_URL}/servers/${serverId}/files/download?path=${encodeURIComponent(filePath)}`;
-}
-
 export function FileTable({ entries, serverId, onNavigate, onDelete }: FileTableProps) {
   const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null);
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null);
@@ -43,23 +39,12 @@ export function FileTable({ entries, serverId, onNavigate, onDelete }: FileTable
   async function handleDownload(entry: FileEntry) {
     setDownloadingPath(entry.path);
     try {
-      const url = buildDownloadUrl(serverId, entry.path);
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`);
-      }
-      const blob = await response.blob();
-      // Trigger browser download
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = entry.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      await downloadFile(serverId, entry.path, entry.name);
     } catch (err) {
-      alert(`Download failed: ${err}`);
+      if (String(err) !== '') {
+        alert(`Download failed: ${err}`);
+      }
+      // Empty error = user cancelled the save dialog
     } finally {
       setDownloadingPath(null);
     }

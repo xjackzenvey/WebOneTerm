@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Server, Tab } from '../types';
+import type { Server, ServerFormData, Tab } from '../types';
 import * as api from '../api/endpoints';
 
 function newTabId(): string {
@@ -40,8 +40,8 @@ interface AppState extends PersistedState {
   openAddForm: () => void;
   openEditForm: (server: Server) => void;
   closeForm: () => void;
-  createServer: (data: api.ServerFormData) => Promise<void>;
-  updateServer: (id: number, data: Partial<api.ServerFormData>) => Promise<void>;
+  createServer: (data: ServerFormData) => Promise<void>;
+  updateServer: (id: number, data: Partial<ServerFormData>) => Promise<void>;
   deleteServer: (id: number) => Promise<void>;
 }
 
@@ -151,13 +151,13 @@ export const useAppStore = create<AppState>()(
         set({ isFormOpen: false, editingServer: null });
       },
 
-      createServer: async (data: api.ServerFormData) => {
+      createServer: async (data: ServerFormData) => {
         await api.createServer(data);
         await get().fetchServers();
         set({ isFormOpen: false, editingServer: null });
       },
 
-      updateServer: async (id: number, data: Partial<api.ServerFormData>) => {
+      updateServer: async (id: number, data: Partial<ServerFormData>) => {
         await api.updateServer(id, data);
         await get().fetchServers();
         set({ isFormOpen: false, editingServer: null });

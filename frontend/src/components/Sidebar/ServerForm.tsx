@@ -3,7 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Modal } from '../common/Modal';
 import { useAppStore } from '../../store/useAppStore';
-import type { Server, ServerFormData } from '../../types';
+import type { ServerFormData } from '../../types';
 import './ServerForm.css';
 
 export function ServerForm() {
