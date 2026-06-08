@@ -70,8 +70,19 @@ pub fn list_files(
 
     let mut entries: Vec<FileEntry> = entries_raw
         .into_iter()
+        .filter(|(pb, _)| {
+            // Skip . and .. entries
+            let name = pb.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            name != "." && name != ".."
+        })
         .map(|(pb, stat)| {
-            let name = pb.to_string_lossy().to_string();
+            // Extract just the filename (some SFTP servers return full path)
+            let name = pb.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
             let full_path = if path.ends_with('/') {
                 format!("{}{}", path, name)
             } else {
