@@ -1,0 +1,95 @@
+.file-table-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.file-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.file-table th {
+  text-align: left;
+  padding: 8px 16px;
+  background: #252526;
+  border-bottom: 1px solid #333;
+  color: #888;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.file-table td {
+  padding: 6px 16px;
+  border-bottom: 1px solid #2a2a2a;
+  color: #cccccc;
+  white-space: nowrap;
+}
+
+.file-row:hover td {
+  background: #2a2d2e;
+}
+
+.col-size {
+  width: 90px;
+}
+
+.col-mod {
+  width: 180px;
+}
+
+.col-perm {
+  width: 110px;
+}
+
+.col-actions {
+  width: 70px;
+  text-align: center;
+}
+
+.file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #cccccc;
+}
+
+.file-name.is-dir {
+  cursor: pointer;
+  color: #75beff;
+}
+
+.file-name.is-dir:hover {
+  text-decoration: underline;
+}
+
+.file-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.empty-dir {
+  text-align: center;
+  color: #666;
+  padding: 40px 16px !important;
+}
+
+.col-perm code {
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
+}
+
+/* Download link styling */
+.col-actions a.icon-btn {
+  text-decoration: none;
+  display: inline-flex;
+}

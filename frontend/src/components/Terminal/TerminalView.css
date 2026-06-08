@@ -1,0 +1,41 @@
+.terminal-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  height: 100%;
+  overflow: hidden;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: #252526;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.terminal-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.terminal-connection {
+  font-size: 11px;
+  color: #888;
+}
+
+.terminal-container {
+  flex: 1;
+  padding: 4px;
+  overflow: hidden;
+}
+
+/* Override xterm.js default padding */
+.terminal-container .xterm {
+  height: 100%;
+  padding: 4px 8px;
+}

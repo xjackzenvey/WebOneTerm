@@ -1,0 +1,97 @@
+.server-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+  gap: 4px;
+}
+
+.server-item:hover {
+  background: #2a2d2e;
+}
+
+.server-item.active {
+  background: #094771;
+}
+
+.server-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.server-item-icon {
+  flex-shrink: 0;
+  color: #888;
+  display: flex;
+}
+.server-item.active .server-item-icon {
+  color: #4fc3f7;
+}
+
+.server-item-info {
+  min-width: 0;
+}
+
+.server-alias {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.server-host {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.server-item.active .server-host {
+  color: #8bbcd0;
+}
+
+.server-item-actions {
+  display: flex;
+  gap: 2px;
+}
+
+/* + button for new terminal — always a subtle highlight */
+.icon-btn.add-terminal {
+  color: #4fc3f7;
+}
+.icon-btn.add-terminal:hover {
+  background: #094771;
+  color: #75beff;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: #999;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.icon-btn:hover {
+  background: #3c3c3c;
+  color: #e0e0e0;
+}
+
+.icon-btn.danger:hover {
+  background: #5a1d1d;
+  color: #f48771;
+}

@@ -1,0 +1,20 @@
+[project]
+name = "weboneterm"
+version = "0.1.0"
+description = "Web-based SSH terminal and file manager"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "asyncssh>=2.18.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "aiosqlite>=0.20.0",
+    "cryptography>=43.0.0",
+    "python-multipart>=0.0.12",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+]
+
+[project.scripts]
+weboneterm = "src.weboneterm.main:main"

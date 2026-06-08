@@ -1,0 +1,45 @@
+.file-manager {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  height: 100%;
+  overflow: hidden;
+}
+
+.file-manager-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.file-manager-header h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #e0e0e0;
+}
+
+.file-manager-server {
+  font-size: 12px;
+  color: #888;
+}
+
+.fm-error {
+  background: #5a1d1d;
+  color: #f48771;
+  padding: 8px 16px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.fm-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 14px;
+}

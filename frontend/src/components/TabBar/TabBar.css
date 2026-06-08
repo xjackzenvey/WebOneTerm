@@ -1,0 +1,118 @@
+.tab-bar {
+  display: flex;
+  background: #252526;
+  border-bottom: 1px solid #333;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab-bar::-webkit-scrollbar {
+  height: 3px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: #999;
+  border-right: 1px solid #333;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  min-width: 0;
+  transition: background 0.1s;
+}
+
+.tab:hover {
+  background: #2a2d2e;
+}
+
+.tab.active {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border-bottom: 2px solid #007acc;
+  padding-bottom: 5px;
+}
+
+.tab-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: #888;
+}
+.tab.active .tab-icon {
+  color: #75beff;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.tab-close:hover {
+  background: #3c3c3c;
+  color: #e0e0e0;
+}
+
+/* ── Inline rename input ──────────────────────────────────── */
+
+.tab-rename-input {
+  background: #3c3c3c;
+  border: 1px solid #007acc;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 6px;
+  width: 100px;
+  outline: none;
+}
+
+/* ── Right-click context menu ─────────────────────────────── */
+
+.context-menu {
+  position: fixed;
+  z-index: 200;
+  background: #2d2d2d;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 120px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: #e0e0e0;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+}
+
+.context-menu-item:hover {
+  background: #094771;
+}

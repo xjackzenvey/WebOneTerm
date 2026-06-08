@@ -1,0 +1,86 @@
+.file-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #252526;
+  border-bottom: 1px solid #333;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #888;
+  overflow: hidden;
+}
+
+.breadcrumb-item {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.breadcrumb-item:hover {
+  background: #3c3c3c;
+  color: #e0e0e0;
+}
+
+.breadcrumb-item.active {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.breadcrumb-sep {
+  color: #555;
+  margin: 0 1px;
+}
+
+/* Mkdir popup */
+.mkdir-popup {
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 8px 10px;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.mkdir-popup input {
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 180px;
+}
+
+.mkdir-popup input:focus {
+  outline: none;
+  border-color: #007acc;
+}
