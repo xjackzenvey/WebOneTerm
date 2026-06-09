@@ -12,12 +12,18 @@ use crate::error::AppError;
 use crate::ssh::connection::connect;
 use crate::state::AppState;
 
+/// Commands sent from the frontend to the I/O thread via mpsc.
+enum TerminalCmd {
+    Write(Vec<u8>),
+    Resize(u32, u32),
+}
+
 pub struct TerminalSession {
     pub server_id: i64,
     pub _session: ssh2::Session,
     pub channel: Option<ssh2::Channel>,
-    pub write_rx: Option<mpsc::Receiver<Vec<u8>>>,
-    write_tx: mpsc::Sender<Vec<u8>>,
+    pub cmd_rx: Option<mpsc::Receiver<TerminalCmd>>,
+    cmd_tx: mpsc::Sender<TerminalCmd>,
     cancel_flag: Arc<AtomicBool>,
 }
 
@@ -60,15 +66,15 @@ pub async fn start_terminal(
     .await
     .map_err(|e| AppError::Other(format!("spawn_blocking join: {}", e)))??;
 
-    let (mut channel, session) = channel;
-    let (write_tx, write_rx) = mpsc::channel::<Vec<u8>>();
+    let (channel, session) = channel;
+    let (cmd_tx, cmd_rx) = mpsc::channel::<TerminalCmd>();
 
     let ts = TerminalSession {
         server_id,
         _session: session,
         channel: Some(channel),
-        write_rx: Some(write_rx),
-        write_tx,
+        cmd_rx: Some(cmd_rx),
+        cmd_tx,
         cancel_flag: cancel_flag.clone(),
     };
 
@@ -85,15 +91,15 @@ pub async fn start_reading(
 ) -> Result<(), AppError> {
     let state = app.state::<AppState>();
 
-    let (mut channel, write_rx, flag) = {
+    let (mut channel, cmd_rx, flag) = {
         let mut sessions = state.terminal_sessions.lock().unwrap();
         let ts = sessions.get_mut(&session_key)
             .ok_or_else(|| AppError::TerminalNotFound(session_key.clone()))?;
-        ts._session.set_timeout(100);
+        ts._session.set_blocking(false);
         let ch = ts.channel.take()
             .ok_or_else(|| AppError::TerminalNotFound("Channel already consumed".into()))?;
-        let rx = ts.write_rx.take()
-            .ok_or_else(|| AppError::TerminalNotFound("write_rx already consumed".into()))?;
+        let rx = ts.cmd_rx.take()
+            .ok_or_else(|| AppError::TerminalNotFound("cmd_rx already consumed".into()))?;
         (ch, rx, ts.cancel_flag.clone())
     };
 
@@ -107,6 +113,7 @@ pub async fn start_reading(
         loop {
             if stdout_cancel.load(Ordering::Relaxed) { break; }
 
+            // Non-blocking read — returns immediately with data or WouldBlock
             match channel.read(&mut buf) {
                 Ok(0) => {
                     let _ = stdout_app.emit(&stdout_event,
@@ -118,8 +125,7 @@ pub async fn start_reading(
                     let _ = stdout_app.emit(&stdout_event,
                         json!({"type": "stdout", "data": data}));
                 }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock
-                           || e.kind() == std::io::ErrorKind::TimedOut => {}
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(e) => {
                     let _ = stdout_app.emit(&stdout_event,
                         json!({"type": "disconnected", "reason": format!("{e}")}));
@@ -127,16 +133,23 @@ pub async fn start_reading(
                 }
             }
 
+            // Drain pending commands (writes + resizes)
             loop {
-                match write_rx.try_recv() {
-                    Ok(data) => {
+                match cmd_rx.try_recv() {
+                    Ok(TerminalCmd::Write(data)) => {
                         use std::io::Write;
                         let _ = channel.write_all(&data);
+                    }
+                    Ok(TerminalCmd::Resize(cols, rows)) => {
+                        let _ = channel.request_pty_size(cols, rows, None, None);
                     }
                     Err(mpsc::TryRecvError::Empty) => break,
                     Err(mpsc::TryRecvError::Disconnected) => break,
                 }
             }
+
+            // Brief sleep to avoid busy-waiting (5ms = 200 Hz polling)
+            std::thread::sleep(std::time::Duration::from_millis(5));
         }
     });
 
@@ -154,18 +167,25 @@ pub async fn write_terminal(
     let ts = sessions.get(&session_key)
         .ok_or_else(|| AppError::TerminalNotFound(session_key.clone()))?;
 
-    ts.write_tx.send(data.into_bytes())
+    ts.cmd_tx.send(TerminalCmd::Write(data.into_bytes()))
         .map_err(|_| AppError::TerminalNotFound("Terminal session closed".into()))?;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn resize_terminal(
-    _app: AppHandle,
-    _session_key: String,
-    _cols: u32,
-    _rows: u32,
+    app: AppHandle,
+    session_key: String,
+    cols: u32,
+    rows: u32,
 ) -> Result<(), AppError> {
+    let state = app.state::<AppState>();
+    let sessions = state.terminal_sessions.lock().unwrap();
+    let ts = sessions.get(&session_key)
+        .ok_or_else(|| AppError::TerminalNotFound(session_key.clone()))?;
+
+    ts.cmd_tx.send(TerminalCmd::Resize(cols, rows))
+        .map_err(|_| AppError::TerminalNotFound("Terminal session closed".into()))?;
     Ok(())
 }
 
